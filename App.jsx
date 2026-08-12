@@ -18,7 +18,7 @@ function App() {
     setResult("");
 
     try {
-      const response = await fetch("/api/career", {
+      const response = await fetch("http://localhost:5000/api/career", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
