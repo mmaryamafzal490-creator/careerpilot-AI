@@ -7,7 +7,7 @@ export default async function handler(req, res) {
 
   try {
     const { interest, subject, skills, message } = req.body;
-    const apiKey = process.env.GEMINI_API_KEY;
+    const apiKey = process.env.GEMINI_API_KEY ||"YOUR_ACTUAL_AQ_KEY_HERE";
 
     if (!apiKey) {
       return res.status(500).json({ reply: "API Key missing in Vercel settings." });
