@@ -7,26 +7,30 @@ export default async function handler(req, res) {
 
   try {
     const { interest, subject, skills, message } = req.body;
-    const apiKey = process.env.GEMINI_API_KEY;
+
+    // Aapki Vercel API key variables check kar raha hai
+    const apiKey = process.env.GEMINI_API_KEY || process.env.GEMUNI_API_KEY_6;
 
     if (!apiKey) {
       return res.status(500).json({ reply: "API Key missing in Vercel settings." });
     }
 
-    // Combine input fields into a single prompt
-    const prompt = message || `My interest is ${interest}, my favourite subject is ${subject}, and my skills are ${skills}. Please give me personalized career recommendations.`;
+    // Input fields ko single prompt me combine kar raha hai
+    const prompt = message || `My interest is ${interest}, my favourite subject is ${subject}, and my skills are ${skills}. Please provide personalized career recommendations and guidance.`;
 
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "models/gemini-1.5-flash-latest" });
+    
+    // Sahi model name format (bina 'models/' prefix ke)
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
     const result = await model.generateContent(prompt);
-    const text = result.response.text();
+    const response = await result.response;
+    const text = response.text();
 
-    return res.status(200).json({ 
-      reply: text,
-      result: text 
-    });
+    return res.status(200).json({ reply: text });
+
   } catch (error) {
-    return res.status(500).json({ reply: "Error: " + error.message });
+    console.error("Gemini API Error:", error);
+    return res.status(500).json({ error: error.message || "Internal Server Error" });
   }
 }
