@@ -5,28 +5,29 @@ export default async function handler(req, res) {
 
   try {
     const { interest, subject, skills, message } = req.body;
+    
+    // Vercel Environment Variables Check
     const apiKey = process.env.GEMINI_API_KEY || process.env.GEMUNI_API_KEY_6;
 
     if (!apiKey) {
       return res.status(200).json({ 
-        reply: "Error: API Key Vercel settings mein missing hai." 
+        reply: "Error: API Key Vercel settings mein missing hai. Please GEMINI_API_KEY set karein." 
       });
     }
 
     const promptText = message || `Student interests: ${interest}, Favourite subject: ${subject}, Current skills: ${skills}. Suggest 3 suitable career paths.`;
 
-    // Active Models List (v1 API)
+    // Active Standard Models
     const modelsToTry = [
+      "gemini-1.5-flash-latest",
       "gemini-1.5-flash",
-      "gemini-1.5-pro",
-      "gemini-2.5-flash"
+      "gemini-1.5-pro-latest"
     ];
 
-    let lastError = "";
+    let lastErrorMessage = "";
 
     for (const modelName of modelsToTry) {
-      // Endpoint version 'v1' set kiya gaya hai
-      const googleApiUrl = `https://generativelanguage.googleapis.com/v1/models/${modelName}:generateContent?key=${apiKey}`;
+      const googleApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
 
       const apiResponse = await fetch(googleApiUrl, {
         method: "POST",
@@ -45,12 +46,12 @@ export default async function handler(req, res) {
       }
 
       if (data.error) {
-        lastError = data.error.message;
+        lastErrorMessage = data.error.message;
       }
     }
 
     return res.status(200).json({ 
-      reply: `Google API Error: ${lastError || "Could not generate content"}` 
+      reply: `Google API Error: ${lastErrorMessage || "Models respond nahi kar rahe."}` 
     });
 
   } catch (error) {
