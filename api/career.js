@@ -5,8 +5,6 @@ export default async function handler(req, res) {
 
   try {
     const { interest, subject, skills, message } = req.body;
-
-    // Vercel Environment Variable se API Key lena
     const apiKey = process.env.GEMINI_API_KEY || process.env.GEMUNI_API_KEY_6;
 
     if (!apiKey) {
@@ -17,47 +15,47 @@ export default async function handler(req, res) {
 
     const promptText = message || `Student interests: ${interest}, Favourite subject: ${subject}, Current skills: ${skills}. Suggest 3 suitable career paths.`;
 
-    // Direct Google Gemini REST API Call (Bina SDK Dependency Ke)
-    const googleApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+    // Active Models List (v1 API)
+    const modelsToTry = [
+      "gemini-1.5-flash",
+      "gemini-1.5-pro",
+      "gemini-2.5-flash"
+    ];
 
-    const apiResponse = await fetch(googleApiUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        contents: [
-          {
-            parts: [{ text: promptText }],
-          },
-        ],
-      }),
+    let lastError = "";
+
+    for (const modelName of modelsToTry) {
+      // Endpoint version 'v1' set kiya gaya hai
+      const googleApiUrl = `https://generativelanguage.googleapis.com/v1/models/${modelName}:generateContent?key=${apiKey}`;
+
+      const apiResponse = await fetch(googleApiUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: promptText }] }]
+        }),
+      });
+
+      const data = await apiResponse.json();
+
+      if (data.candidates?.[0]?.content?.parts?.[0]?.text) {
+        return res.status(200).json({ 
+          reply: data.candidates[0].content.parts[0].text 
+        });
+      }
+
+      if (data.error) {
+        lastError = data.error.message;
+      }
+    }
+
+    return res.status(200).json({ 
+      reply: `Google API Error: ${lastError || "Could not generate content"}` 
     });
 
-    const data = await apiResponse.json();
-
-    // Agar Google API koi error bhejti hai
-    if (data.error) {
-      return res.status(200).json({ 
-        reply: `Google API Error: ${data.error.message}` 
-      });
-    }
-
-    // Direct reply extract karna
-    const replyText = data.candidates?.[0]?.content?.parts?.[0]?.text;
-
-    if (!replyText) {
-      return res.status(200).json({ 
-        reply: "Sorry, no career suggestion was received from Google API." 
-      });
-    }
-
-    return res.status(200).json({ reply: replyText });
-
   } catch (error) {
-    console.error("Server Error:", error);
     return res.status(200).json({ 
-      reply: `Server Error: ${error.message || "Failed to connect to API"}` 
+      reply: `Server Error: ${error.message}` 
     });
   }
 }
