@@ -8,45 +8,33 @@ export default async function handler(req, res) {
   try {
     const { interest, subject, skills, message } = req.body;
 
-    // Vercel Environment Variables Check
+    // API Key resolution (Multiple fallbacks)
     const apiKey = process.env.GEMINI_API_KEY || process.env.GEMUNI_API_KEY_6;
 
     if (!apiKey) {
-      return res.status(500).json({ 
-        reply: "API Key missing in Vercel settings.",
-        suggestion: "API Key missing in Vercel settings.",
-        recommendation: "API Key missing in Vercel settings."
+      return res.status(200).json({ 
+        reply: "Error: GEMINI_API_KEY Vercel Environment Variables mein missing hai." 
       });
     }
 
-    // Input string create karna
-    const prompt = message || `My interest is ${interest || 'general'}, my favourite subject is ${subject || 'general'}, and my skills are ${skills || 'general'}. Please provide personalized career recommendations and guidance.`;
-
     const genAI = new GoogleGenerativeAI(apiKey);
     
-    // Stable Gemini Model
+    // Stable Gemini model string
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-    const result = await model.generateContent(prompt);
+    const promptText = message || `Student interests: ${interest}, Favourite subject: ${subject}, Current skills: ${skills}. Suggest 3 suitable career paths with brief details.`;
+
+    const result = await model.generateContent(promptText);
     const response = await result.response;
     const text = response.text();
 
-    // Multiple keys return kar rahe hain taake frontend jis name se bhi demand kare data mil jaye
-    return res.status(200).json({ 
-      reply: text,
-      suggestion: text,
-      suggestions: text,
-      recommendation: text,
-      recommendations: text,
-      careerSuggestions: text
-    });
+    return res.status(200).json({ reply: text });
 
   } catch (error) {
-    console.error("Gemini API Error:", error);
-    return res.status(500).json({ 
-      error: error.message || "Internal Server Error",
-      reply: "Error: " + (error.message || "Failed to fetch suggestions"),
-      suggestion: "Error: " + (error.message || "Failed to fetch suggestions")
+    console.error("Gemini Execution Error:", error);
+    // Explicitly returning 'reply' field even on errors so frontend catches it
+    return res.status(200).json({ 
+      reply: `Gemini API Error: ${error.message || "Failed to fetch suggestions"}` 
     });
   }
 }
