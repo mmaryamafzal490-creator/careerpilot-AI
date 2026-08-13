@@ -1,5 +1,3 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
-
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -8,33 +6,58 @@ export default async function handler(req, res) {
   try {
     const { interest, subject, skills, message } = req.body;
 
-    // API Key resolution (Multiple fallbacks)
+    // Vercel Environment Variable se API Key lena
     const apiKey = process.env.GEMINI_API_KEY || process.env.GEMUNI_API_KEY_6;
 
     if (!apiKey) {
       return res.status(200).json({ 
-        reply: "Error: GEMINI_API_KEY Vercel Environment Variables mein missing hai." 
+        reply: "Error: API Key Vercel settings mein missing hai." 
       });
     }
 
-    const genAI = new GoogleGenerativeAI(apiKey);
-    
-    // Stable Gemini model string
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+    const promptText = message || `Student interests: ${interest}, Favourite subject: ${subject}, Current skills: ${skills}. Suggest 3 suitable career paths.`;
 
-    const promptText = message || `Student interests: ${interest}, Favourite subject: ${subject}, Current skills: ${skills}. Suggest 3 suitable career paths with brief details.`;
+    // Direct Google Gemini REST API Call (Bina SDK Dependency Ke)
+    const googleApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
 
-    const result = await model.generateContent(promptText);
-    const response = await result.response;
-    const text = response.text();
+    const apiResponse = await fetch(googleApiUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        contents: [
+          {
+            parts: [{ text: promptText }],
+          },
+        ],
+      }),
+    });
 
-    return res.status(200).json({ reply: text });
+    const data = await apiResponse.json();
+
+    // Agar Google API koi error bhejti hai
+    if (data.error) {
+      return res.status(200).json({ 
+        reply: `Google API Error: ${data.error.message}` 
+      });
+    }
+
+    // Direct reply extract karna
+    const replyText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+
+    if (!replyText) {
+      return res.status(200).json({ 
+        reply: "Sorry, no career suggestion was received from Google API." 
+      });
+    }
+
+    return res.status(200).json({ reply: replyText });
 
   } catch (error) {
-    console.error("Gemini Execution Error:", error);
-    // Explicitly returning 'reply' field even on errors so frontend catches it
+    console.error("Server Error:", error);
     return res.status(200).json({ 
-      reply: `Gemini API Error: ${error.message || "Failed to fetch suggestions"}` 
+      reply: `Server Error: ${error.message || "Failed to connect to API"}` 
     });
   }
 }
