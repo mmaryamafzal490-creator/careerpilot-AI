@@ -19,9 +19,9 @@ export default async function handler(req, res) {
 
     // Active Standard Models
     const modelsToTry = [
-      "gemini-1.5-flash-latest",
       "gemini-1.5-flash",
-      "gemini-1.5-pro-latest"
+      "gemini-1.5-pro",
+      "gemini-1.0-pro"
     ];
 
     let lastErrorMessage = "";
