@@ -41,20 +41,18 @@ export default async function handler(req, res) {
         const resultText = data.candidates[0].content.parts[0].text;
         
         // Return success
-        return res.status(200).json({ 
-          message: resultText 
-        });
-      } else {
-        lastErrorMessage = data.error?.message || "Unknown error";
-        console.error(`Model ${model} failed:`, lastErrorMessage);
-      }
+        if (response.ok && data.candidates && data.candidates[0]) {
+  let resultText = data.candidates[0].content.parts[0].text;
+  
+  // 1. ```json ``` remove kar do
+  resultText = resultText.replace(/```json/g, '').replace(/```/g, '').trim();
 
-    } catch (err) {
-      lastErrorMessage = err.message;
-      console.error(`Fetch error for ${model}:`, err);
-    }
-  }
-
+  // 2. Dono format me return karo taake frontend break na ho
+  return res.status(200).json({ 
+    recommendations: resultText, // frontend ke liye
+    message: resultText // backup ke liye
+  });
+          
   // If all models failed
   return res.status(500).json({ 
     message: `AI se error: ${lastErrorMessage}` || "Models respond nahi kar rahe." 
