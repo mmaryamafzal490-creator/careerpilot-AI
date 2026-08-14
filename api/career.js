@@ -20,7 +20,6 @@ export default async function handler(req, res) {
     // Active Standard Models
     const modelsToTry = [
       "gemini-1.5-flash",
-      "gemini-1.5-pro",
     ];
 
     let lastErrorMessage = "";
