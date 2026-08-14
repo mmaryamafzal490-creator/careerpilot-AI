@@ -1,60 +1,63 @@
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+    return res.status(405).json({ message: 'Method Not Allowed' });
   }
 
-  try {
-    const { interest, subject, skills, message } = req.body;
+  const { interests, skills, message } = req.body;
+
+  // Vercel environment variable check
+  if (!process.env.GEMINI_API_KEY) {
+    return res.status(500).json({ 
+      message: "Server error: API key settings missing hai. Please GEMINI_API_KEY set karein." 
+    });
+  }
+
+  // Prompt for Gemini
+  const prompt = `Student Interests: ${interests}, Favourite subject: ${skills}, Current skills: ${skills}. Suggest 3 suitable career paths.`;
+
+  // Stable model for 2026
+  const modelsToTry = [
+    "gemini-1.5-flash"
+  ];
+
+  let lastErrorMessage = "";
+
+  for (const model of modelsToTry) {
+    // KEY FIX: v1beta -> v1
+    const googleApiUrl = `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${process.env.GEMINI_API_KEY}`;
     
-    // Vercel Environment Variables Check
-    const apiKey = process.env.GEMINI_API_KEY || process.env.GEMUNI_API_KEY_6;
-
-    if (!apiKey) {
-      return res.status(200).json({ 
-        reply: "Error: API Key Vercel settings mein missing hai. Please GEMINI_API_KEY set karein." 
-      });
-    }
-
-    const promptText = message || `Student interests: ${interest}, Favourite subject: ${subject}, Current skills: ${skills}. Suggest 3 suitable career paths.`;
-
-    // Active Standard Models
-    const modelsToTry = [
-      "gemini-1.5-flash",
-    ];
-
-    let lastErrorMessage = "";
-
-    for (const modelName of modelsToTry) {
-      const googleApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
-
-      const apiResponse = await fetch(googleApiUrl, {
+    try {
+      const response = await fetch(googleApiUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          contents: [{ parts: [{ text: promptText }] }]
-        }),
+          contents: [{ parts: [{ text: prompt }] }]
+        })
       });
 
-      const data = await apiResponse.json();
+      const data = await response.json();
 
-      if (data.candidates?.[0]?.content?.parts?.[0]?.text) {
+      if (response.ok && data.candidates && data.candidates[0]) {
+        const resultText = data.candidates[0].content.parts[0].text;
+        
+        // Return success
         return res.status(200).json({ 
-          reply: data.candidates[0].content.parts[0].text 
+          message: resultText 
         });
+      } else {
+        lastErrorMessage = data.error?.message || "Unknown error";
+        console.error(`Model ${model} failed:`, lastErrorMessage);
       }
 
-      if (data.error) {
-        lastErrorMessage = data.error.message;
-      }
+    } catch (err) {
+      lastErrorMessage = err.message;
+      console.error(`Fetch error for ${model}:`, err);
     }
-
-    return res.status(200).json({ 
-      reply: `Google API Error: ${lastErrorMessage || "Models respond nahi kar rahe."}` 
-    });
-
-  } catch (error) {
-    return res.status(200).json({ 
-      reply: `Server Error: ${error.message}` 
-    });
   }
+
+  // If all models failed
+  return res.status(500).json({ 
+    message: `AI se error: ${lastErrorMessage}` || "Models respond nahi kar rahe." 
+  });
+
 }
